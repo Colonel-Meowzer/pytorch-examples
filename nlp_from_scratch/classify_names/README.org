@@ -1,0 +1,36 @@
+#+title:     NLP From Scratch: Classifying Names Tutorial
+#+author:    Dustin
+
+This is the implementation of this [[https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html][tutorial]]
+
+This document contains notes and discoveries I made along the way so that I can reference this knowledge at a later time.
+
+
+* Classification
+
+** Logsoftmax
+
+The Logsoftmax transformation is used to convert an element to a log probability. 
+
+$$
+log(softmax(x_i)) = log \left( \frac{exp(x_i)}{\Sigma_j exp(x_i)} \right)
+$$
+
+*** Uses
+
+- Apply as a step to a NN layer when doing classification problems
+
+** NLLLoss
+
+Negative Likelihood Loss is a loss function often used in conjunction with Logsoftmax
+
+\begin{equation}
+\begin{split}
+p_k = & \frac{exp(f_k)}{\Sigma_j exp(f_k)}\\
+L_i = & -log(p_k)
+\end{split}
+\end{equation}
+
+
+* Resources
+- https://ljvmiranda921.github.io/notebook/2017/08/13/softmax-and-the-negative-log-likelihood/
