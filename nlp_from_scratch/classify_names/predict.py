@@ -6,93 +6,15 @@ import unicodedata
 import string
 import torch
 
-def list_files(path): return glob.glob(path)
+#n_hidden = 128
+#rnn = RNN(n_letters, n_hidden, n_categories)
 
 
-all_letters = string.ascii_letters + " .,;'"
-n_letters = len(all_letters)
+#input = line_to_tensor('Albert')
+#hidden = torch.zeros(1, n_hidden)
 
-# Turn a Unicode string to plain ASCII, thanks to https://stackoverflow.com/a/518232/2809427
-def unicode_to_ascii(s):
-    return ''.join(
-        c for c in unicodedata.normalize('NFD', s)
-        if unicodedata.category(c) != 'Mn'
-        and c in all_letters
-    )
-
-
-# Build the category_lines dictionary, a list of names per language
-
-# Read a file and split into lines
-def read_and_encode_lines(filename):
-    lines = open(filename, encoding='utf-8').read().strip().split('\n')
-    return [unicode_to_ascii(line) for line in lines]
-
-def get_categories(path_glob):
-    all_categories = []
-    category_lines = {}
-    for filename in list_files(path_glob):
-        category = os.path.splitext(os.path.basename(filename))[0]
-        all_categories.append(category)
-        lines = read_and_encode_lines(filename)
-        category_lines[category] = lines
-    return category_lines, all_categories
-
-category_lines, all_categories = get_categories("data/names/*.txt")
-n_categories = len(all_categories)
-
-# Find letter index from all_letters, e.g. "a" = 0
-def letter_to_index(letter):
-    return all_letters.find(letter)
-
-# Just for demonstration, turn a letter into a <1 x n_letters> Tensor
-def letter_to_tensor(letter):
-    tensor = torch.zeros(1, n_letters)
-    tensor[0][letter_to_index(letter)] = 1
-    return tensor
-
-# Turn a line into a <line_length x 1 x n_letters>,
-# or an array of one-hot letter vectors
-def line_to_tensor(line):
-    tensor = torch.zeros(len(line), 1, n_letters)
-    for li, letter in enumerate(line):
-        tensor[li][0][letter_to_index(letter)] = 1
-    return tensor
-
-
-# -------------------------------------------------------
-
-import torch.nn as nn
-
-class RNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-        super(RNN, self).__init__()
-
-        self.hidden_size = hidden_size
-
-        self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
-        self.i2o = nn.Linear(input_size + hidden_size, output_size)
-        self.softmax = nn.LogSoftmax(dim=1)
-
-    def forward(self, input, hidden):
-        combined = torch.cat((input, hidden), 1)
-        hidden = self.i2h(combined)
-        output = self.i2o(combined)
-        output = self.softmax(output)
-        return output, hidden
-
-    def initHidden(self):
-        return torch.zeros(1, self.hidden_size)
-
-n_hidden = 128
-rnn = RNN(n_letters, n_hidden, n_categories)
-
-
-input = line_to_tensor('Albert')
-hidden = torch.zeros(1, n_hidden)
-
-output, next_hidden = rnn(input[0], hidden)
-print(output)
+#output, next_hidden = rnn(input[0], hidden)
+#print(output)
 
 # -------------------------------------------------------
 
