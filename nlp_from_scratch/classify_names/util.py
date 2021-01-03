@@ -9,8 +9,6 @@ import torch
 def list_files(path): return glob.glob(path)
 
 
-all_letters = string.ascii_letters + " .,;'"
-n_letters = len(all_letters)
 
 # Turn a Unicode string to plain ASCII, thanks to https://stackoverflow.com/a/518232/2809427
 def unicode_to_ascii(s):
@@ -38,8 +36,6 @@ def get_categories(path_glob):
         category_lines[category] = lines
     return category_lines, all_categories
 
-category_lines, all_categories = get_categories("data/names/*.txt")
-n_categories = len(all_categories)
 
 # Find letter index from all_letters, e.g. "a" = 0
 def letter_to_index(letter):
@@ -58,4 +54,10 @@ def line_to_tensor(line):
     for li, letter in enumerate(line):
         tensor[li][0][letter_to_index(letter)] = 1
     return tensor
+
+all_letters = string.ascii_letters + " .,;'"
+n_letters = len(all_letters)
+
+category_lines, all_categories = get_categories("data/names/*.txt")
+n_categories = len(all_categories)
 

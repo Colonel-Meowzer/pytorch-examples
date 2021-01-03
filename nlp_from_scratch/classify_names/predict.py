@@ -5,53 +5,34 @@ import os
 import unicodedata
 import string
 import torch
+import time
+import math
 
-#n_hidden = 128
-#rnn = RNN(n_letters, n_hidden, n_categories)
+import torch.nn as nn
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+from model import RNN
+from util import list_files, unicode_to_ascii, line_to_tensor, letter_to_tensor, all_letters, n_letters, all_categories, n_categories, category_lines
+from data import category_from_output, random_training_example
 
 
-#input = line_to_tensor('Albert')
 #hidden = torch.zeros(1, n_hidden)
 
 #output, next_hidden = rnn(input[0], hidden)
 #print(output)
 
-# -------------------------------------------------------
 
+#for i in range(10):
+#    category, line, category_tensor, line_tensor = random_training_example()
+#    print('category =', category, '/ line =', line)
 
-def categoryFromOutput(output):
-    top_n, top_i = output.topk(1)
-    category_i = top_i[0].item()
-    return all_categories[category_i], category_i
-
-print(categoryFromOutput(output))
-
-# -------------------------------------------------------
-
-import random
-
-def randomChoice(l):
-    return l[random.randint(0, len(l) - 1)]
-
-def randomTrainingExample():
-    category = randomChoice(all_categories)
-    line = randomChoice(category_lines[category])
-    category_tensor = torch.tensor([all_categories.index(category)], dtype=torch.long)
-    line_tensor = line_to_tensor(line)
-    return category, line, category_tensor, line_tensor
-
-for i in range(10):
-    category, line, category_tensor, line_tensor = randomTrainingExample()
-    print('category =', category, '/ line =', line)
-
-
-# ---------------------------------------------------
 
 criterion = nn.NLLLoss()
 
 learning_rate = 0.005 # If you set this too high, it might explode. If too low, it might not learn
 
-def train(category_tensor, line_tensor):
+# TODO: create a class which inherits RNN to store and train data OR use partial function.
+def train(category_tensor, line_tensor, criterion, learning_rate, rnn):
     hidden = rnn.initHidden()
 
     rnn.zero_grad()
@@ -69,19 +50,6 @@ def train(category_tensor, line_tensor):
     return output, loss.item()
 
 
-import time
-import math
-
-n_iters = 100000
-print_every = 5000
-plot_every = 1000
-
-
-
-# Keep track of losses for plotting
-current_loss = 0
-all_losses = []
-
 def timeSince(since):
     now = time.time()
     s = now - since
@@ -89,73 +57,85 @@ def timeSince(since):
     s -= m * 60
     return '%dm %ds' % (m, s)
 
-start = time.time()
+def main():
+    n_iters = 100000
+    print_every = 5000
+    plot_every = 1000
+    n_hidden = 128
+    rnn = RNN(n_letters, n_hidden, n_categories)
 
-for iter in range(1, n_iters + 1):
-    category, line, category_tensor, line_tensor = randomTrainingExample()
-    output, loss = train(category_tensor, line_tensor)
-    current_loss += loss
+    # Keep track of losses for plotting
+    current_loss = 0
+    all_losses = []
+    categories = all_categories
+    data = category_lines
 
-    # Print iter number, loss, name and guess
-    if iter % print_every == 0:
-        guess, guess_i = categoryFromOutput(output)
-        correct = '✓' if guess == category else '✗ (%s)' % category
-        print('%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
+    start = time.time()
 
-    # Add current loss avg to list of losses
-    if iter % plot_every == 0:
-        all_losses.append(current_loss / plot_every)
-        current_loss = 0
+    for iter in range(1, n_iters + 1):
+        category, line, category_tensor, line_tensor = random_training_example(categories, data)
+        output, loss = train(category_tensor, line_tensor, criterion, learning_rate, rnn)
+        current_loss += loss
 
-# ------------------------------------------------------
+        # Print iter number, loss, name and guess
+        if iter % print_every == 0:
+            guess, guess_i = category_from_output(output, categories, 1)
+            correct = '✓' if guess == category else '✗ (%s)' % category
+            print('%d %d%% (%s) %.4f %s / %s %s' % (iter, iter / n_iters * 100, timeSince(start), loss, line, guess, correct))
 
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+        # Add current loss avg to list of losses
+        if iter % plot_every == 0:
+            all_losses.append(current_loss / plot_every)
+            current_loss = 0
 
-plt.figure()
-plt.plot(all_losses)
+    plt.figure()
+    plt.plot(all_losses)
 
-# Confusion Matrix
+    # Confusion Matrix
 
-# Keep track of correct guesses in a confusion matrix
-confusion = torch.zeros(n_categories, n_categories)
-n_confusion = 10000
+    # Keep track of correct guesses in a confusion matrix
+    confusion = torch.zeros(n_categories, n_categories)
+    n_confusion = 10000
 
-# Just return an output given a line
-def evaluate(line_tensor):
-    hidden = rnn.initHidden()
+    # Just return an output given a line
+    def evaluate(line_tensor):
+        hidden = rnn.initHidden()
 
-    for i in range(line_tensor.size()[0]):
-        output, hidden = rnn(line_tensor[i], hidden)
+        for i in range(line_tensor.size()[0]):
+            output, hidden = rnn(line_tensor[i], hidden)
 
-    return output
+        return output
 
-# Go through a bunch of examples and record which are correctly guessed
-for i in range(n_confusion):
-    category, line, category_tensor, line_tensor = randomTrainingExample()
-    output = evaluate(line_tensor)
-    guess, guess_i = categoryFromOutput(output)
-    category_i = all_categories.index(category)
-    confusion[category_i][guess_i] += 1
+    # Go through a bunch of examples and record which are correctly guessed
+    for i in range(n_confusion):
+        category, line, category_tensor, line_tensor = random_training_example(categories, data)
+        output = evaluate(line_tensor)
+        guess, guess_i = category_from_output(output, categories, 1)
+        category_i = all_categories.index(category)
+        confusion[category_i][guess_i] += 1
 
-# Normalize by dividing every row by its sum
-for i in range(n_categories):
-    confusion[i] = confusion[i] / confusion[i].sum()
+    # Normalize by dividing every row by its sum
+    for i in range(n_categories):
+        confusion[i] = confusion[i] / confusion[i].sum()
 
-# Set up plot
-fig = plt.figure()
-ax = fig.add_subplot(111)
-cax = ax.matshow(confusion.numpy())
-fig.colorbar(cax)
+    # Set up plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    cax = ax.matshow(confusion.numpy())
+    fig.colorbar(cax)
 
-# Set up axes
-ax.set_xticklabels([''] + all_categories, rotation=90)
-ax.set_yticklabels([''] + all_categories)
+    # Set up axes
+    ax.set_xticklabels([''] + all_categories, rotation=90)
+    ax.set_yticklabels([''] + all_categories)
 
-# Force label at every tick
-ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+    # Force label at every tick
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
-# sphinx_gallery_thumbnail_number = 2
-plt.show()
+    # sphinx_gallery_thumbnail_number = 2
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
 
