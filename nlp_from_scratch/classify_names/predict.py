@@ -31,7 +31,6 @@ criterion = nn.NLLLoss()
 
 learning_rate = 0.005 # If you set this too high, it might explode. If too low, it might not learn
 
-# TODO: create a class which inherits RNN to store and train data OR use partial function.
 def train(category_tensor, line_tensor, criterion, learning_rate, rnn):
     hidden = rnn.initHidden()
 
